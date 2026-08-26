@@ -1,0 +1,85 @@
+推上 GitHub（Git Bash）
+========================
+
+開 Git Bash（開始功能表搜尋 "Git Bash"），整塊貼進去，按 Enter。
+
+    cd /c/Users/david/Downloads/tw-cb-data
+    git init
+    git branch -M main
+    git add .
+    git commit -m "櫃買 CB 端點與抓取器（端點經本機實地驗證）"
+    git remote add origin https://github.com/david26984741-cell/tw-cb-data.git
+    git push -u origin main
+
+
+會遇到的兩種狀況
+----------------
+
+1) 跳出瀏覽器要你授權 GitHub
+   照做即可。你已經在用 GitHub Desktop，憑證通常已經存著，多半不會問。
+
+2) 出現 "remote origin already exists"
+   把 remote add 那行換成：
+
+    git remote set-url origin https://github.com/david26984741-cell/tw-cb-data.git
+
+   然後只重跑最後一行 git push -u origin main
+
+
+確認成功
+--------
+    https://github.com/david26984741-cell/tw-cb-data
+
+應該看得到 README.md、scripts/、requirements.txt。
+
+
+推完之後
+========
+
+步驟 A：搬到你要的位置（可選，之後再做也行）
+--------------------------------------------
+PowerShell：
+
+    Move-Item "C:\Users\david\Downloads\tw-cb-data" "C:\Users\david\Claude\tw-cb-data"
+
+git 設定會跟著資料夾走，搬完不用重設。
+
+
+步驟 B：體檢
+------------
+    cd /c/Users/david/Downloads/tw-cb-data
+    pip install -r requirements.txt
+    python scripts/probe.py
+
+報告會存在 data/probe_report.txt。**把那份報告貼回給我**，我才能判讀 MOPS 那半邊要怎麼寫。
+
+
+步驟 C：先驗一天，確認解析正確
+------------------------------
+    python scripts/tpex_cb.py fetch 2026-08-25
+
+打開 data/quotes/2026/RSta0113.20260825.csv 檢查：
+  - 約 770 列、約 385 檔
+  - 每檔兩列（等價／議價），兩列的代號與名稱都要有值
+  - 中文不能是亂碼
+
+
+步驟 D：回補（約 4,900 檔）
+---------------------------
+    python scripts/tpex_cb.py backfill
+
+可隨時 Ctrl+C 中斷，重跑會自動略過已抓過的檔。
+想放慢節奏（Git Bash）：
+
+    SLEEP_TPEX=3 python scripts/tpex_cb.py backfill
+
+建議先小範圍試跑：
+
+    python scripts/tpex_cb.py backfill --start 2007-01 --end 2007-03
+
+
+步驟 E：回補完再推一次
+----------------------
+    git add data
+    git commit -m "回補 2007-01 至今日行情"
+    git push

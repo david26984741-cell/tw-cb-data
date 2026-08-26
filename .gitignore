@@ -1,0 +1,17 @@
+# 體檢與回補的暫時產物
+data/probe_report.txt
+data/backfill_failures.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 注意：data/quotes/ 與 data/snapshots/ 是這個 repo 的重點，不要 ignore。
+# 回補完約 4,900 個小 CSV，總量在 GitHub 免費額度內，不需要 LFS。
