@@ -1,0 +1,56 @@
+==============================================================
+ tw-cb-data 連線體檢
+==============================================================
+
+-- 環境 --
+[PASS] 對外 IP
+        27.52.69.255
+[PASS] SSL 環境
+        Python 3.13.11 / OpenSSL 3.0.18 30 Sep 2025
+        VERIFY_X509_STRICT 存在: True（櫃買憑證缺 Subject Key Identifier，本專案已針對此放寬該項檢查）
+
+-- 櫃買 TPEx --
+[PASS] robots.txt
+        HTTP 200（404 代表沒有 robots.txt）
+[PASS] 靜態 CSV（不帶 cookie/referer）
+        HTTP 200  70744 bytes
+        開頭: TITLE,櫃檯買賣轉(交)換公司債買賣斷交易行情表-含議價及鉅額交?
+[PASS] 靜態 CSV 2007-01-02（歷史起點）
+        HTTP 200  51742 bytes（驗證 2007-01-02 起點）
+[PASS] 索引 API POST
+        2026-08 索引取得 18 個檔；最新 20260826
+[PASS] 索引 API POST（不帶 referer）
+        HTTP 200  stat='ok'  檔數=18
+[PASS] 解析器對真實檔案
+        769 列 / 385 檔 / 空代號 0 列（須為 0）
+        交易別分布: {'等價': 384, '議價': 384, '': 1}
+        首列: 代號=11011 名稱=台泥一永 交易=等價 均價=101.12
+
+-- MOPS --
+[PASS] 可達性
+        HTTP 200  final=https://mopsov.twse.com.tw/mops/web/index
+[PASS] t120sg01 參數規則
+        [no_bond_yrn] HTTP 200  2552B  無該錯誤字串  無轉換價格欄位
+            存檔: data\raw\mops_t120sg01_no_bond_yrn.html
+            內容: <html> <head> <title>??祇??鞈?閮?閫?皜祉??</title> <link href="css/css2.css" rel="stylesheet" type="text/css" Media="Screen"/> <script type="text/javascript" src="js/mops2.js"></script> </head> <body> <div 
+        [full] HTTP 200  2552B  無該錯誤字串  無轉換價格欄位
+            存檔: data\raw\mops_t120sg01_full.html
+            內容: <html> <head> <title>??祇??鞈?閮?閫?皜祉??</title> <link href="css/css2.css" rel="stylesheet" type="text/css" Media="Screen"/> <script type="text/javascript" src="js/mops2.js"></script> </head> <body> <div 
+[PASS] 包裹下載 step=12
+        HTTP 200  33073B  約 10 個 <tr>  無認股價格欄位 
+        存檔: data\raw\mops_bulk_step12.html
+        內容: <html> <head> <title>??祇??鞈?閮?閫?皜祉??</title> <link href="css/css2.css" rel="stylesheet" type="text/css" Media="Screen"/> <script type="text/javascript" src="js/mops2.js"></script> </head> <body> <div 
+
+-- 其他來源 --
+[PASS] 集保 opendata 2-8
+        HTTP 200  24919 bytes  約 381 列
+[PASS] cb168 output.xlsx
+        HTTP 200  74773 bytes
+
+==============================================================
+ 判讀
+==============================================================
+ 櫃買回補可以開跑：
+     python scripts/tpex_cb.py backfill
+
+完整報告：C:\Users\david\Downloads\tw-cb-data\data\probe_report.txt

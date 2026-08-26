@@ -1,6 +1,8 @@
-# 體檢與回補的暫時產物
+# 診斷與紀錄產物，不進版控
 data/probe_report.txt
 data/backfill_failures.csv
+data/daily_log.txt
+data/raw/
 
 # Python
 __pycache__/

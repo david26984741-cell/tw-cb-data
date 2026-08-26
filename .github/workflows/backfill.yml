@@ -1,0 +1,73 @@
+name: 歷史回補
+
+# 手動觸發。到 GitHub 網頁的 Actions 分頁，選這個工作流程，按 Run workflow。
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "起始月份（YYYY-MM）"
+        required: true
+        default: "2007-01"
+      end:
+        description: "結束月份（YYYY-MM，留空代表到本月）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+# 同時間只允許一個抓取工作，避免兩邊同時 push 打架
+concurrency:
+  group: tw-cb-data-fetch
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝套件
+        run: pip install -r requirements.txt
+
+      - name: 連線體檢（跳過 MOPS）
+        run: python scripts/probe.py --no-mops
+
+      - name: 回補
+        env:
+          # 使用者輸入一律走環境變數，不要直接內插進 shell
+          START: ${{ inputs.start }}
+          END: ${{ inputs.end }}
+          SLEEP_TPEX: "1.5"
+        run: |
+          if [ -n "$END" ]; then
+            python scripts/tpex_cb.py backfill --start "$START" --end "$END"
+          else
+            python scripts/tpex_cb.py backfill --start "$START"
+          fi
+
+      - name: 統計
+        run: |
+          echo "行情檔數: $(find data/quotes -name '*.csv' | wc -l)"
+          du -sh data/quotes || true
+
+      - name: 提交結果
+        env:
+          START: ${{ inputs.start }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --staged --quiet; then
+            echo "沒有新資料，不需提交"
+          else
+            git commit -m "回補 ${START} 起（GitHub Actions）"
+            git pull --rebase --autostash
+            git push
+          fi

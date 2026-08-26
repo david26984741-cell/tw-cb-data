@@ -16,11 +16,21 @@ import argparse
 import csv
 import io
 import os
+import ssl
 import sys
 import time
 from datetime import date, datetime
 
+import certifi
 import requests
+from requests.adapters import HTTPAdapter
+
+# Windows 主控台預設 cp950，遇到無法對應的字元會讓整支程式崩掉。
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 BASE = "https://www.tpex.org.tw"
 INDEX_URL = f"{BASE}/www/zh-tw/bond/cbDaily"
@@ -40,14 +50,53 @@ HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
 }
 
+class _RelaxedStrictAdapter(HTTPAdapter):
+    """櫃買的伺服器憑證缺少 Subject Key Identifier 擴充欄位。
+
+    Python 3.13 起 ssl.create_default_context() 預設開啟 VERIFY_X509_STRICT
+    （嚴格 RFC 5280 檢查），會直接拒絕這種憑證並丟出：
+        certificate verify failed: Missing Subject Key Identifier
+
+    這裡只關掉「嚴格擴充欄位檢查」這一項，憑證鏈驗證與主機名比對全部保留，
+    不是用 verify=False 把驗證整個關掉。瀏覽器的行為也是如此。
+    """
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["ssl_context"] = _relaxed_context()
+        return super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, *args, **kwargs):
+        kwargs["ssl_context"] = _relaxed_context()
+        return super().proxy_manager_for(*args, **kwargs)
+
+
+def _relaxed_context():
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    ctx.check_hostname = True
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    if hasattr(ssl, "VERIFY_X509_STRICT"):
+        ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
+    return ctx
+
+
+def make_session(with_headers=True):
+    """建立一個能連上櫃買的 requests.Session。"""
+    s = requests.Session()
+    s.mount("https://", _RelaxedStrictAdapter())
+    if with_headers:
+        s.headers.update(HEADERS)
+    else:
+        s.headers.update({"User-Agent": HEADERS["User-Agent"]})
+    return s
+
+
 _session = None
 
 
 def session():
     global _session
     if _session is None:
-        _session = requests.Session()
-        _session.headers.update(HEADERS)
+        _session = make_session()
         # 先取一次頁面，讓伺服器發 cookie（若它有這個要求）
         try:
             _session.get(HEADERS["Referer"], timeout=TIMEOUT)
@@ -270,9 +319,21 @@ def cmd_backfill(args):
         print(f"失敗清單：{fp}（重跑本指令即可續補，已存在的檔會自動略過）")
 
 
+def cmd_daily(args):
+    """每日維護：只補當月缺的檔。已抓過的自動略過，重複執行安全。"""
+    today = date.today()
+    ns = argparse.Namespace(start=f"{today.year}-{today.month:02d}",
+                            end=f"{today.year}-{today.month:02d}",
+                            force=False)
+    cmd_backfill(ns)
+
+
 def main():
     ap = argparse.ArgumentParser(description="櫃買 CB 日行情抓取")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p0 = sub.add_parser("daily", help="每日維護：補當月缺的檔")
+    p0.set_defaults(func=cmd_daily)
 
     p1 = sub.add_parser("index", help="列出某月有哪些檔")
     p1.add_argument("month", help="YYYY-MM")
