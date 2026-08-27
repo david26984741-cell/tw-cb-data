@@ -1,8 +1,10 @@
 # 診斷與紀錄產物，不進版控
 data/probe_report.txt
-data/backfill_failures.csv
 data/daily_log.txt
 data/raw/
+
+# 注意：data/backfill_failures.csv 刻意「不」ignore。
+# 第一次回補時把它擋掉，導致缺了三分之一的檔卻查不到失敗原因。
 
 # Python
 __pycache__/

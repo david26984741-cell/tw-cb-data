@@ -31,7 +31,7 @@ jobs:
       - name: 抓當月缺的檔
         env:
           SLEEP_TPEX: "1.5"
-        run: python scripts/tpex_cb.py daily
+        run: python -u scripts/tpex_cb.py daily
 
       - name: 提交結果
         run: |

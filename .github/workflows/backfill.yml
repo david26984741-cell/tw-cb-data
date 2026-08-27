@@ -47,9 +47,9 @@ jobs:
           SLEEP_TPEX: "1.5"
         run: |
           if [ -n "$END" ]; then
-            python scripts/tpex_cb.py backfill --start "$START" --end "$END"
+            python -u scripts/tpex_cb.py backfill --start "$START" --end "$END"
           else
-            python scripts/tpex_cb.py backfill --start "$START"
+            python -u scripts/tpex_cb.py backfill --start "$START"
           fi
 
       - name: 統計

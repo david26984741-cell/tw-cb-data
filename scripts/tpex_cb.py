@@ -107,6 +107,26 @@ def session():
 
 # ---------------------------------------------------------------- 索引
 
+def _retry(fn, what, tries=5, base=3.0):
+    """指數退避重試。
+
+    兩小時內要打五千次請求，偶發失敗是必然的。第一版沒有重試，
+    導致索引一失敗整個月被跳過 —— 2009 與 2019 整年掉光就是這樣來的。
+    """
+    last = None
+    for i in range(tries):
+        try:
+            return fn()
+        except Exception as e:
+            last = e
+            if i < tries - 1:
+                wait = base * (2 ** i)
+                print(f"    [重試 {i+1}/{tries - 1}] {what}: {type(e).__name__} — {wait:.0f} 秒後重試",
+                      flush=True)
+                time.sleep(wait)
+    raise last
+
+
 def month_index(year, month, file_code=FILE_CODE):
     """回傳該月的 [(西元日期字串 YYYYMMDD, 檔案路徑), ...]，新到舊。
 
@@ -118,11 +138,15 @@ def month_index(year, month, file_code=FILE_CODE):
         "id": "",
         "response": "json",
     }
-    r = session().post(INDEX_URL, data=payload, timeout=TIMEOUT)
-    r.raise_for_status()
-    j = r.json()
-    if j.get("stat") != "ok":
-        raise RuntimeError(f"{year}-{month:02d} 索引回應非 ok: {j.get('stat')!r}")
+    def _call():
+        r = session().post(INDEX_URL, data=payload, timeout=TIMEOUT)
+        r.raise_for_status()
+        j = r.json()
+        if j.get("stat") != "ok":
+            raise RuntimeError(f"索引回應非 ok: {j.get('stat')!r}")
+        return j
+
+    j = _retry(_call, f"{year}-{month:02d} 索引")
 
     out = []
     for table in j.get("tables") or []:
@@ -159,9 +183,15 @@ def static_url(ymd, file_code=FILE_CODE):
 
 def download(path_or_url):
     url = path_or_url if path_or_url.startswith("http") else BASE + path_or_url
-    r = session().get(url, timeout=TIMEOUT)
-    r.raise_for_status()
-    return r.content
+
+    def _call():
+        r = session().get(url, timeout=TIMEOUT)
+        r.raise_for_status()
+        if not r.content.startswith(b"TITLE"):
+            raise RuntimeError(f"回應不是預期的報表檔（前 20 bytes: {r.content[:20]!r}）")
+        return r.content
+
+    return _retry(_call, os.path.basename(url))
 
 
 def parse(raw, ymd=None):
@@ -283,7 +313,7 @@ def cmd_backfill(args):
         try:
             items = month_index(y, m)
         except Exception as e:
-            print(f"[索引失敗] {y}-{m:02d}: {e}", file=sys.stderr)
+            print(f"[索引失敗] {y}-{m:02d}: {e}", file=sys.stderr, flush=True)
             failures.append((f"{y}-{m:02d}", "index", str(e)))
             time.sleep(SLEEP)
             continue
@@ -301,13 +331,13 @@ def cmd_backfill(args):
                 total_rows += len(rows)
                 time.sleep(SLEEP)
             except Exception as e:
-                print(f"[下載失敗] {ymd}: {e}", file=sys.stderr)
+                print(f"[下載失敗] {ymd}: {e}", file=sys.stderr, flush=True)
                 failures.append((ymd, "download", str(e)))
                 time.sleep(SLEEP)
 
         total_files += got
         total_skip += skipped
-        print(f"{y}-{m:02d}  索引 {len(items):>2}  新抓 {got:>2}  略過 {skipped:>2}")
+        print(f"{y}-{m:02d}  索引 {len(items):>2}  新抓 {got:>2}  略過 {skipped:>2}", flush=True)
         time.sleep(SLEEP)
 
     print(f"\n完成：新抓 {total_files} 檔 / {total_rows} 列，略過 {total_skip} 檔，失敗 {len(failures)} 次")
