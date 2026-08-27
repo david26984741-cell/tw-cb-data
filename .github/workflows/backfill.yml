@@ -52,6 +52,9 @@ jobs:
             python -u scripts/tpex_cb.py backfill --start "$START"
           fi
 
+      - name: 資料正確性驗證（全期）
+        run: python -u scripts/validate.py
+
       - name: 合併成回測用 parquet
         run: python -u scripts/consolidate.py
 

@@ -77,6 +77,10 @@ def clean(df):
                  .replace({"": None, "--": None, "-": None, "nan": None}))
             df[c] = pd.to_numeric(s, errors="coerce")
 
+    # 來源檔最後有一列「合計」，是當日全市場總量，不是債券。
+    # 留在原始 CSV 裡當檢核碼（validate.py 會用），但不能進回測資料。
+    df = df[df["代號"].str.fullmatch(r"[0-9A-Za-z]+", na=False)]
+
     # 代號 + 日期 + 交易別 唯一
     df = df.drop_duplicates(subset=["代號", "資料日期", "交易"], keep="last")
     df = df.sort_values(["資料日期", "代號", "交易"]).reset_index(drop=True)

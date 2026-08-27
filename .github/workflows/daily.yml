@@ -33,6 +33,10 @@ jobs:
           SLEEP_TPEX: "1.5"
         run: python -u scripts/tpex_cb.py daily
 
+      # 只驗當年度。全期驗證約需半小時，放在「歷史回補」跑就好。
+      - name: 資料正確性驗證（當年度）
+        run: python -u scripts/validate.py --year "$(date -u +%Y)"
+
       - name: 合併成回測用 parquet
         run: python -u scripts/consolidate.py
 
