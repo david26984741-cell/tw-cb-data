@@ -52,10 +52,14 @@ jobs:
             python -u scripts/tpex_cb.py backfill --start "$START"
           fi
 
+      - name: 合併成回測用 parquet
+        run: python -u scripts/consolidate.py
+
       - name: 統計
         run: |
           echo "行情檔數: $(find data/quotes -name '*.csv' | wc -l)"
-          du -sh data/quotes || true
+          du -sh data/quotes data/combined || true
+          cat data/combined/manifest.json || true
 
       - name: 提交結果
         env:

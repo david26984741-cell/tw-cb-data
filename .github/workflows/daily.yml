@@ -33,6 +33,9 @@ jobs:
           SLEEP_TPEX: "1.5"
         run: python -u scripts/tpex_cb.py daily
 
+      - name: 合併成回測用 parquet
+        run: python -u scripts/consolidate.py
+
       - name: 提交結果
         run: |
           git config user.name "github-actions[bot]"
