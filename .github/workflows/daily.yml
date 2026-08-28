@@ -33,6 +33,13 @@ jobs:
           SLEEP_TPEX: "1.5"
         run: python -u scripts/tpex_cb.py daily
 
+      # 下櫃、上櫃、變更停止交易、賣回權都是滾動視窗，
+      # 不每天存就永久消失。這一步不能省。
+      - name: 狀態快照
+        env:
+          SLEEP_TPEX: "1.5"
+        run: python -u scripts/snapshot.py
+
       # 只驗當年度。全期驗證約需半小時，放在「歷史回補」跑就好。
       - name: 資料正確性驗證（當年度）
         run: python -u scripts/validate.py --year "$(date -u +%Y)"

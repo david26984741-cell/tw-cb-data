@@ -52,6 +52,11 @@ jobs:
             python -u scripts/tpex_cb.py backfill --start "$START"
           fi
 
+      - name: 狀態快照與公告回補
+        env:
+          SLEEP_TPEX: "1.5"
+        run: python -u scripts/snapshot.py --backfill
+
       - name: 資料正確性驗證（全期）
         run: python -u scripts/validate.py
 
